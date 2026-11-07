@@ -17,18 +17,16 @@
 - 配置集中在 [js/app.js](js/app.js) 顶部 `CONFIG`；设计系统在 [css/style.css](css/style.css)（延续 aaa.html 黑白细线风格）
 - html 课件新标签页播放；ppt/pptx/pdf/doc/docx 下载；只识别教师文件夹顶层文件
 
-## 当前待办（2026-11-07，完成后更新）
+## 当前状态（2026-11-07）
 
-**项目已迁移：`KylinLe/classroom` → `KylinLe/cp`（旧仓库弃用）。**
+**项目已迁移到 `KylinLe/cp` 并上线**：`https://kylinle.github.io/cp/`（全站验证通过）。旧仓库 `classroom` 弃用，待主人删除或归档。
 
-- [x] 代码文档已全部切换到 `cp`（CONFIG.repo、文档链接、files.json 重新生成）
-- [ ] 主人操作：新建公开仓库 `cp` 并开 Pages → 推送本地全部文件 → 网页上传 `.github/workflows` → 验证 `kylinle.github.io/cp/`
-- [ ] 旧仓库 classroom：新站验证通过后由主人删除或归档
+- [ ] 唯一待办：旧仓库 classroom 由主人处理（删除 / 归档 / 关闭 Pages）
 
 ## 环境事实
 
 - 主人浏览器访问 `api.github.com` 不可靠（疑似系统代理）；实际主力通道是 files.json 清单
-- 主人的同步工具跳过隐藏文件；远程与本地存在双向漂移，维护前先核对两边文件列表
+- 本机已装 GitHub CLI（`~/bin/gh`，已登录 KylinLe，含 workflow 权限）；本地是 git 仓库（origin = KylinLe/cp）。**发布更新直接 `git add -A && git commit && git push`**；主人自行添加的文件用 `git add -A` 一并提交即可
 - 匿名 GitHub API 只能读不能删；删除远程文件需主人网页端操作（或提供凭据）
 
 ## 验证方法

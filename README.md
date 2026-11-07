@@ -19,10 +19,10 @@
 
 截至 2026-11-07 核对（远程状态以 GitHub API 实测为准）：
 
-- [x] **迁移到新仓库 `KylinLe/cp`**（2026-11-07，主人决定弃用 `classroom`）：CONFIG.repo 与文档链接已全部切换；本地 files.json 已按当前课件重新生成；工作流文件本身不绑定仓库名，搬到新仓库可直接用
+- [x] **迁移到新仓库 `KylinLe/cp` 完成，网站已上线**（2026-11-07）：`https://kylinle.github.io/cp/` 全站验证通过（密码门、讲解师页、课件、清单、工作流全部正常）
+- [x] **本地已初始化为 git 仓库**并连接 `KylinLe/cp`（origin，main 分支）；本机已安装 GitHub CLI（`~/bin/gh`，已登录 KylinLe 账号，含 workflow 权限）。今后维护者可直接 `git add -A && git commit && git push` 发布更新，不再依赖主人的同步工具
 - [x] **旧英文名已全部改完**；test.html、`hw/lzy/swh/yyz` 的 index.html、`swh/早读(3)(2).pptx` 已按主人要求删除——新仓库从干净的本地状态开始，无遗留
-- [ ] **主人操作（迁移落地）**：① GitHub 新建公开仓库 `cp` 并开启 Pages（main 根目录）② 推送本地全部文件 ③ 网页端上传 `.github/workflows/update-filelist.yml`（同步工具跳过隐藏文件夹，方法同旧仓库）④ 等 1-2 分钟访问 `https://kylinle.github.io/cp/` 验证（密码 139572）
-- [ ] **旧仓库 `classroom` 弃用**：新站验证通过后由主人删除或归档旧仓库；在旧仓库 Settings 关闭 Pages 即停止旧地址服务
+- [ ] **旧仓库 `classroom` 待主人处理**：新站已验证，由主人删除或归档旧仓库（或在旧仓库 Settings 关闭 Pages）
 
 ## 技术约束（不可违反）
 
@@ -100,14 +100,15 @@ space.html?t=hw
 ## 已知环境事实（直接影响维护判断，接手必读）
 
 1. **主人的网络环境访问 `api.github.com` 不可靠**（浏览器侧失败、curl 正常，疑似系统代理拦截浏览器流量）。实际主力通道是 files.json 清单。诊断时不要默认「GitHub 接口可达」。
-2. **主人的同步工具会跳过隐藏文件/文件夹**：`.github` 至今未上传（见「当前状态与待办」）。每次核对远程时先确认 `.github/workflows` 是否存在。
+2. **主人的同步工具会跳过隐藏文件/文件夹**（历史事实，旧仓库因此漏传过 `.github`）。当前仓库的工作流已通过 git 推送，无此问题；核对远程时仍建议先确认 `.github/workflows` 存在。
 3. **历史上有过双向漂移**（旧仓库 classroom 的网页端上传与本地不一致；已通过迁移到新仓库 cp 消除）。维护前仍建议先核对两边文件列表，注意同步方向。
 4. **GitHub 匿名接口 60 次/小时/IP**，校园网全校共享；触顶会自动降级不影响使用，但别把它误判为故障。
 5. 主人不是程序员：需求可能模糊或有专业性错误，先以产品经理思维理解意图。
 
 ## 日常维护
 
-- **加课件**：放文件到教师文件夹 → 上传 GitHub main → 完成。Actions 自动刷新 files.json（约 1-2 分钟），网页点「刷新」即出现。（前提：`.github/workflows` 已上传）
+- **加课件**：放文件到教师文件夹 → 上传 GitHub main → 完成。Actions 自动刷新 files.json（约 1-2 分钟），网页点「刷新」即出现。
+- **发布方式**：本地是 git 仓库（origin = KylinLe/cp）。维护者（AI）可用 `git add -A && git commit && git push` 直接发布；主人自行放进来的课件未提交时，先 `git pull` 或直接 `git add -A` 一并提交。
 - **加教师**：① 仓库根目录新建同名文件夹 ② `CONFIG.teachers` 加账号 ③ 上传。入口页自动多一个教室，清单自动包含。
 - **换仓库**：改 `CONFIG.repo`，并在 GitHub 上把 Pages 指向新仓库。
 - **更新代码后**：浏览器强制刷新（`Cmd + Shift + R`）；GitHub Pages 生效要等 1-2 分钟。
