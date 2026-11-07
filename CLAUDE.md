@@ -18,7 +18,7 @@
 - 5 个讲解师个人仓库（KylinLe/cp-hw|lxn|lzy|swh|yyz）：根目录放课件 + 各自的工作流生成各自 files.json + 各自开 Pages(main 根目录)
 - sessionStorage 键：`cp_unlocked`（已解锁）/ `cp_files_<teacher>`（列表缓存，含两源合并结果）/ `cp_api_down`（接口不可用记忆）
 - 配置集中在 [js/app.js](js/app.js) 顶部 `CONFIG`（含 `teacherRepos` 映射与 `pagesBase`）；设计系统在 [css/style.css](css/style.css)（延续 aaa.html 黑白细线风格）
-- html 课件新标签页播放；ppt/pptx/pdf/doc/docx 下载；两处来源都只识别顶层文件；讲解师 = `hw/lxn/lzy/swh/yyz`
+- **所有格式的文件都显示**：html 有「播放（新标签页）+ 下载」两个入口，其余格式一律下载（图标=扩展名大写，无扩展名显示 FILE）；两处来源都只收录顶层文件（文件夹、隐藏文件、files.json、README.md 不显示）；讲解师 = `hw/lxn/lzy/swh/yyz`
 
 ## 常用任务（速查）
 

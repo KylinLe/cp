@@ -32,14 +32,12 @@ var CONFIG = {
   /* 讲解师仓库所在的 Pages 域名（换账号时改这里） */
   pagesBase: 'https://kylinle.github.io',
 
-  /* 支持的文件格式：badge 为列表图标，play 表示新标签页播放，否则下载 */
+  /* 文件行为（2026-11-07 起显示所有格式的文件）：
+     html 支持「播放 + 下载」两个入口；其余所有格式一律下载。
+     badge 为列表图标：html 固定 HTML，其他格式用扩展名大写
+     （未识别扩展名显示 FILE）。 */
   fileTypes: {
-    html: { badge: 'HTML', action: 'play',     label: '播放' },
-    ppt:  { badge: 'PPT',  action: 'download', label: '下载' },
-    pptx: { badge: 'PPTX', action: 'download', label: '下载' },
-    pdf:  { badge: 'PDF',  action: 'download', label: '下载' },
-    doc:  { badge: 'DOC',  action: 'download', label: '下载' },
-    docx: { badge: 'DOCX', action: 'download', label: '下载' }
+    html: { badge: 'HTML', play: true }
   },
 
   /* 文件列表缓存时长（毫秒）。GitHub 接口匿名每小时限 60 次，
@@ -164,18 +162,16 @@ var SRC_LABELS = {
 };
 function srcLabel() { return SRC_LABELS[lastSource] || ''; }
 
-/* 把一条原始文件记录转成课件条目；格式不支持返回 null */
+/* 把一条原始文件记录转成课件条目；所有格式都显示，无格式要求 */
 function makeFile(displayName, size) {
   var ext = fileExt(displayName);
   var type = CONFIG.fileTypes[ext];
-  if (!type) return null;
   return {
     name: displayName,
     ext: ext,
     size: size,
-    badge: type.badge,
-    action: type.action,
-    label: type.label
+    badge: (type && type.badge) || (ext ? ext.toUpperCase() : 'FILE'),
+    play: !!(type && type.play) /* html：播放+下载；其余：仅下载 */
   };
 }
 
@@ -420,27 +416,30 @@ function teacherRowHtml(teacher, index) {
          '</a>';
 }
 
-/* 渲染课件列表行；右侧标注文件来源：本平台 / 讲师仓库 */
+/* 渲染课件列表行；右侧标注文件来源：本平台 / 讲师仓库。
+   html 提供「播放（新标签页）+ 下载」两个入口；其余格式只有一个下载入口；
+   文件名点击与右侧第一个入口行为一致（html=播放，其余=下载）。 */
 function fileRowHtml(teacher, file) {
   var href = file.url || fileHref(teacher, file.name); /* 讲师仓库文件用绝对地址 */
-  var attrs = 'href="' + href + '"';
-  if (file.action === 'play') {
-    attrs += ' target="_blank" rel="noopener"';           /* html：新标签页播放 */
-  } else {
-    attrs += ' download="' + file.name.replace(/"/g, '') + '"'; /* 其余：直接下载 */
+  var dn = ' download="' + file.name.replace(/"/g, '') + '"';
+  var nameAttrs = 'href="' + href + '"' +
+    (file.play ? ' target="_blank" rel="noopener"' : dn);
+  var acts = '<a class="f-act" href="' + href + '"' + dn + '>下载 &darr;</a>';
+  if (file.play) {
+    acts = '<a class="f-act" href="' + href + '" target="_blank" rel="noopener">播放 &nearr;</a>' + acts;
   }
   var srcTag = file.src === 'repo' ? '讲师仓库' : '本平台';
-  return '<a class="file-row" ' + attrs + '>' +
+  return '<div class="file-row">' +
            '<div class="badge">' + file.badge + '</div>' +
            '<div class="f-info">' +
-             '<div class="f-name">' + file.name + '</div>' +
+             '<a class="f-name" ' + nameAttrs + '>' + file.name + '</a>' +
              '<div class="f-meta">' + fmtSize(file.size) + '</div>' +
            '</div>' +
            '<div class="f-side">' +
              '<div class="f-src">' + srcTag + '</div>' +
-             '<div class="f-act">' + file.label + (file.action === 'play' ? ' &nearr;' : ' &darr;') + '</div>' +
+             '<div class="f-acts">' + acts + '</div>' +
            '</div>' +
-         '</a>';
+         '</div>';
 }
 
 /* ==================== 页面：密码门 + 教师选择（index.html） ==================== */

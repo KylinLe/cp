@@ -309,12 +309,17 @@ h2 .en{
   border:1px solid var(--ink);
   font-size:10px; font-weight:600; letter-spacing:.14em;
   padding:6px 10px; white-space:nowrap;
+  max-width:110px; overflow:hidden; text-overflow:ellipsis;
 }
 .f-name{
+  display:block;
   font-size:clamp(16px, 1.9vw, 19px);
   font-weight:600; letter-spacing:-.01em;
   word-break:break-all;
+  color:var(--ink); text-decoration:none;
+  transition:color .3s var(--ease);
 }
+.f-name:hover{ color:var(--muted); }
 .f-meta{
   margin-top:5px;
   font-size:12px; letter-spacing:.1em; color:var(--faint);
@@ -327,9 +332,10 @@ h2 .en{
   font-size:10px; letter-spacing:.14em; color:var(--faint);
   padding:3px 8px; white-space:nowrap;
 }
+.f-acts{ display:flex; gap:14px; }
 .f-act{
   font-size:12px; letter-spacing:.2em; color:var(--muted);
-  white-space:nowrap;
+  white-space:nowrap; text-decoration:none;
   transition:color .3s var(--ease);
 }
 .file-row:hover .f-act{ color:var(--ink); }

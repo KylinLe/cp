@@ -1,8 +1,9 @@
 # 自动生成课件清单 files.json
 #
 # 每次向 main 分支推送（包括上传课件）后自动运行：
-# 扫描仓库里所有顶层文件夹，把支持的课件文件（html/ppt/pptx/pdf/doc/docx）
-# 的名字和大小写入 files.json 并提交回仓库。
+# 扫描仓库里所有顶层文件夹，把里面**所有格式**的文件
+# 的名字和大小写入 files.json 并提交回仓库（2026-11-07 起
+# 不再限制格式；不收录隐藏文件、files.json 与 README.md）。
 # 网站读取这份清单显示课件列表——不需要访问 GitHub 接口，
 # 不受网络环境影响，新课件推送后约 1-2 分钟内出现。
 #
@@ -30,8 +31,8 @@ jobs:
           python3 << 'EOF'
           import json, os, time
 
-          EXT_OK = {'.html', '.ppt', '.pptx', '.pdf', '.doc', '.docx'}
           SKIP_DIRS = {'.git', '.github'}
+          SKIP_NAMES = {'files.json', 'README.md'}
 
           out = {
               'generated_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
@@ -46,8 +47,7 @@ jobs:
               files = []
               for name in sorted(os.listdir(path)):
                   p = os.path.join(path, name)
-                  ext = os.path.splitext(name)[1].lower()
-                  if os.path.isfile(p) and ext in EXT_OK:
+                  if os.path.isfile(p) and not name.startswith('.') and name not in SKIP_NAMES:
                       files.append({'name': name, 'size': os.path.getsize(p)})
               if files:  # 只有含课件的文件夹才写进清单
                   out['teachers'][entry] = files
