@@ -26,7 +26,7 @@
 - **加课件**：小文件放进讲解师文件夹 → 推送本仓库；大文件（几十 MB 级）放进 `cp-<账号>` 仓库根目录 → 推送该仓库。各自工作流 1-2 分钟自动刷新清单
 - **改密码**：`printf '新密码' | shasum -a 256` → 替换 `CONFIG.passwordHash` → 推送
 - **加讲解师**：新建同名文件夹 + `CONFIG.teachers` 加账号 → 推送；要个人仓库的话：建 `cp-<账号>`（拷贝任一讲师仓库工作流 + 开 Pages）+ `CONFIG.teacherRepos` 加映射
-- **测试**：`node --check js/app.js`；node + vm 沙箱测顶层函数；headless Chrome `--dump-dom` 测页面；临时文件 `_test_*` 用完即删
+- **测试**：`node --check js/app.js`；node + vm 沙箱测顶层函数；headless Chrome `--dump-dom` 测页面；临时文件 `_test_*` 用完即删。注意：**GitHub Pages（Jekyll）不发布下划线开头的文件**，需要推到线上做验证的临时页不要以下划线开头
 
 ## 当前状态（2026-11-07）
 

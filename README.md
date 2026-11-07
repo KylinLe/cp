@@ -183,7 +183,7 @@ space.html?t=hw
   - 页面流程：`--headless=new --virtual-time-budget=9000 --dump-dom <url>`；在测试页注入脚本把结果写进 `document.title`，再 grep 标题
   - 解锁技巧：复制 space.html 为临时页，在 app.js 脚本前注入 `sessionStorage.setItem("cp_unlocked","1")`；或临时页 `location.replace('index.html')` 后 dump
 - **接口核对**：`curl api.github.com/repos/KylinLe/cp/contents/<folder>`（看 `x-ratelimit-remaining` 头）、`curl data.jsdelivr.com/v1/package/gh/KylinLe/cp@main/flat`
-- 临时文件统一命名 `_test_*`，测完删除；本地预览 `python3 -m http.server 8000`
+- 临时文件统一命名 `_test_*`，测完删除；本地预览 `python3 -m http.server 8000`。注意：**GitHub Pages 不发布下划线开头的文件**（Jekyll 规则），要推到线上验证的临时页不要以下划线开头
 - 线上验证：curl 各关键路径（首页 / space.html / files.json / 课件文件）看 HTTP 200
 
 ## 故障速查
