@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>抽签 — 普陀中学摄影社</title>
+<meta name="description" content="普陀中学摄影社课堂抽签工具。可按年级、性别筛选，支持指定或排除名单。">
+<style>
+/* ============================================================
+   普陀中学摄影社 — 抽签
+   沿用官网设计系统：细线 / 黑白 / 字距 / 六边形光孔
+   ============================================================ */
+
+:root{
+  --ink:#0f0f0f;
+  --paper:#ffffff;
+  --muted:#6e6e73;
+  --faint:#a1a1a6;
+  --line:#e3e3e5;
+  --line-dark:#2a2a2e;
+
+  --pad: clamp(20px, 5vw, 64px);
+  --maxw: 1180px;
+
+  --ease: cubic-bezier(.22,.61,.24,1);
+}
+
+*,*::before,*::after{ margin:0; padding:0; box-sizing:border-box; }
+
+html{ -webkit-text-size-adjust:100%; scroll-behavior:smooth; }
+
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:-apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC",
+              "Helvetica Neue", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size:16px;
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+
+::selection{ background:var(--ink); color:var(--paper); }
+a{ color:inherit; text-decoration:none; }
+button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; }
+
+/* 保证 hidden 属性一定生效（.draw-grid / .result-bar 的 display 会盖掉 UA 样式） */
+[hidden]{ display:none !important; }
+
+.wrap{
+  width:100%; max-width:var(--maxw);
+  margin:0 auto; padding:0 var(--pad);
+}
+
+/* ---------- 导航 ---------- */
+.nav{
+  position:fixed; inset:0 0 auto 0; z-index:100;
+  background:rgba(255,255,255,.82);
+  backdrop-filter:saturate(180%) blur(14px);
+  -webkit-backdrop-filter:saturate(180%) blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.nav-inner{
+  max-width:var(--maxw); margin:0 auto; padding:0 var(--pad);
+  height:64px; display:flex; align-items:center; justify-content:space-between; gap:24px;
+}
+.brand{ display:flex; align-items:center; gap:12px; }
+.brand svg{ width:26px; height:26px; flex:0 0 auto; }
+.brand .name{ font-size:14px; font-weight:600; letter-spacing:.14em; }
+.brand .sub{
+  display:block; font-size:8.5px; letter-spacing:.24em;
+  color:var(--faint); text-transform:uppercase; margin-top:3px; font-weight:500;
+}
+.nav-tag{
+  font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--faint); font-weight:600;
+}
+
+/* ---------- 首屏 ---------- */
+.hero{ padding-top:clamp(112px, 15vh, 160px); padding-bottom:clamp(28px, 4vh, 44px); }
+.eyebrow{
+  font-size:11px; letter-spacing:.42em; text-transform:uppercase;
+  color:var(--muted); font-weight:600; padding-left:.42em;
+  margin-bottom:clamp(16px,2.2vw,24px);
+}
+h1{
+  font-size:clamp(56px, 10vw, 120px);
+  line-height:.94; letter-spacing:-.035em; font-weight:600;
+  margin-left:-.02em;
+}
+.hero-en{
+  margin-top:clamp(12px,1.8vw,20px);
+  font-size:clamp(10px,1.2vw,12px);
+  letter-spacing:.34em; text-transform:uppercase;
+  color:var(--faint); font-weight:500;
+}
+.hero-desc{
+  margin-top:clamp(20px,3vw,30px);
+  font-size:clamp(14px,1.5vw,16px);
+  line-height:1.95; color:var(--muted); max-width:30em;
+}
+
+/* ---------- 分节 ---------- */
+.sec{ padding:clamp(40px,6vw,64px) 0 clamp(64px,9vw,104px); border-top:1px solid var(--line); }
+.sec-head{
+  display:grid;
+  grid-template-columns:clamp(48px,6vw,88px) minmax(0,1fr);
+  gap:clamp(16px,3vw,40px);
+  align-items:start;
+  margin-bottom:clamp(28px,4vw,44px);
+}
+.sec-num{ font-size:11px; letter-spacing:.2em; color:var(--faint); font-weight:600; padding-top:.55em; }
+h2{
+  font-size:clamp(26px,3.4vw,40px); line-height:1.1;
+  letter-spacing:-.025em; font-weight:600;
+}
+h2 .en{
+  display:block; margin-top:12px;
+  font-size:11px; letter-spacing:.34em; text-transform:uppercase;
+  color:var(--faint); font-weight:500;
+}
+
+.sec-body{
+  display:grid;
+  grid-template-columns:clamp(48px,6vw,88px) minmax(0,1fr);
+  gap:clamp(16px,3vw,40px);
+}
+
+/* ---------- 设置行 ---------- */
+.setting{
+  display:grid;
+  grid-template-columns:clamp(88px,12vw,140px) minmax(0,1fr);
+  gap:clamp(14px,2.4vw,32px);
+  align-items:center;
+  padding:clamp(16px,2.2vw,22px) 0;
+  border-bottom:1px solid var(--line);
+}
+.setting:first-child{ border-top:1px solid var(--ink); }
+.setting .k{
+  font-size:12px; letter-spacing:.16em; color:var(--faint);
+  font-weight:600; text-transform:uppercase;
+}
+.setting .v{ display:flex; flex-wrap:wrap; align-items:center; gap:12px 16px; }
+
+/* ---------- 分段控件 ---------- */
+.seg{
+  display:inline-flex; flex-wrap:wrap;
+  border:1px solid var(--ink); background:var(--paper);
+}
+.seg button{
+  padding:8px 18px; font-size:13.5px; letter-spacing:.06em;
+  color:var(--muted); transition:background .28s var(--ease), color .28s var(--ease);
+  white-space:nowrap;
+}
+.seg button + button{ border-left:1px solid var(--line); }
+.seg button:hover{ color:var(--ink); background:#fafafa; }
+.seg button.is-on{ background:var(--ink); color:var(--paper); }
+.seg button.is-on:hover{ background:var(--ink); }
+
+/* ---------- 数字步进 ---------- */
+.stepper{
+  display:inline-flex; align-items:center;
+  border:1px solid var(--ink); background:var(--paper);
+}
+.stepper button{
+  width:42px; height:42px;
+  display:grid; place-items:center;
+  font-size:18px; line-height:1; color:var(--muted);
+  transition:background .24s var(--ease), color .24s var(--ease);
+}
+.stepper button:hover{ background:var(--ink); color:var(--paper); }
+.stepper button:disabled{ opacity:.3; cursor:not-allowed; background:none; color:var(--muted); }
+.stepper input{
+  width:74px; height:42px; border:0;
+  border-left:1px solid var(--line); border-right:1px solid var(--line);
+  text-align:center; font-size:17px; font-weight:600;
+  font-variant-numeric:tabular-nums; color:var(--ink);
+  background:transparent; outline:none;
+  -moz-appearance:textfield;
+}
+.stepper input::-webkit-outer-spin-button,
+.stepper input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+
+.hint-line{
+  font-size:13px; color:var(--muted); letter-spacing:.04em;
+}
+.hint-line b{
+  color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums;
+}
+.hint-line.is-warn{ color:#b4232a; }
+
+/* ---------- 人员选择 ---------- */
+.picker{ margin-top:20px; }
+.picker-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:16px; flex-wrap:wrap; margin-bottom:14px;
+}
+.picker-head .t{
+  font-size:12px; letter-spacing:.16em; color:var(--faint);
+  font-weight:600; text-transform:uppercase;
+}
+.picker-head .acts{ display:flex; gap:18px; }
+.picker-head .acts button{
+  font-size:12.5px; letter-spacing:.06em; color:var(--muted);
+  padding-bottom:2px; border-bottom:1px solid var(--line);
+  transition:color .24s var(--ease), border-color .24s var(--ease);
+}
+.picker-head .acts button:hover{ color:var(--ink); border-color:var(--ink); }
+
+.people{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(112px,1fr));
+  gap:8px;
+  padding:14px;
+  border:1px solid var(--line);
+  max-height:320px; overflow-y:auto;
+}
+.person{
+  position:relative;
+  display:flex; flex-direction:column; gap:1px;
+  padding:8px 10px; text-align:left;
+  line-height:1.35;
+  border:1px solid var(--line);
+  transition:border-color .24s var(--ease), background .24s var(--ease),
+             color .24s var(--ease), opacity .24s var(--ease);
+}
+.person .nm{ font-size:13.5px; font-weight:600; letter-spacing:.02em; padding-right:12px; }
+.person .mt{ font-size:10.5px; letter-spacing:.06em; color:var(--faint); }
+.person:hover{ border-color:var(--ink); }
+/* 只抽名单：实心反白 */
+.person.is-white{ background:var(--ink); border-color:var(--ink); color:var(--paper); }
+.person.is-white .mt{ color:#a9a9b0; }
+.person.is-white::after{
+  content:"✓"; position:absolute; top:7px; right:8px;
+  font-size:9.5px; line-height:1; color:var(--paper); opacity:.75;
+}
+/* 不抽名单：浅底 + 删除线 */
+.person.is-black{
+  border-color:var(--ink); color:var(--muted);
+  background:repeating-linear-gradient(135deg,#fff 0 7px,#f5f5f6 7px 14px);
+}
+.person.is-black .nm{ text-decoration:line-through; text-decoration-thickness:1px; }
+.person.is-black .mt{ color:var(--faint); }
+.person.is-black::after{
+  content:"✕"; position:absolute; top:6px; right:8px;
+  font-size:9.5px; line-height:1; color:var(--ink); opacity:.55;
+}
+/* 当前筛选范围外的人：淡出提示，但仍然可以点选 */
+.person.is-out{ opacity:.34; }
+
+/* ---------- 抽签按钮 ---------- */
+.actions{
+  display:flex; align-items:center; gap:clamp(16px,3vw,32px);
+  flex-wrap:wrap; margin-top:clamp(28px,4vw,40px);
+}
+.btn-draw{
+  position:relative; overflow:hidden;
+  display:inline-flex; align-items:center; gap:14px;
+  padding:17px 40px;
+  background:var(--ink); color:var(--paper);
+  font-size:15px; letter-spacing:.18em; font-weight:600;
+  transition:transform .3s var(--ease), opacity .3s var(--ease);
+}
+.btn-draw:hover{ transform:translateY(-2px); }
+.btn-draw:disabled{ opacity:.32; cursor:not-allowed; transform:none; }
+.btn-draw .lbl{ position:relative; z-index:1; }
+.btn-draw svg{ width:15px; height:15px; position:relative; z-index:1; }
+
+/* ---------- 结果（反白） ---------- */
+.result{
+  background:var(--ink); color:var(--paper);
+  padding:clamp(48px,7vw,88px) 0 clamp(64px,9vw,110px);
+  min-height:52vh;
+}
+.result .sec-num{ color:#6c6c72; }
+.result h2{ color:var(--paper); }
+.result .en{ color:#8b8b91; }
+
+.result-empty{
+  border-top:1px solid var(--line-dark); padding-top:clamp(28px,4vw,40px);
+  font-size:14px; letter-spacing:.06em; color:#8b8b91;
+}
+
+.draw-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(212px,1fr));
+  gap:0;
+  background:transparent;
+  border-top:1px solid var(--line-dark);
+}
+.dcard{
+  background:var(--ink);
+  /* 用自身描边代替 gap 线：末行不满时不会露出成片灰底 */
+  box-shadow:1px 0 0 var(--line-dark), 0 1px 0 var(--line-dark);
+  padding:clamp(18px,2.4vw,26px) clamp(16px,2.2vw,24px);
+  display:flex; align-items:baseline; gap:14px;
+  min-height:96px;
+}
+.dcard .dnum{
+  font-size:10.5px; letter-spacing:.16em; color:#6c6c72;
+  font-variant-numeric:tabular-nums; flex:0 0 auto;
+  transition:color .5s var(--ease);
+}
+.dcard .dbox{ min-width:0; }
+.dcard .dname{
+  display:block;
+  font-size:clamp(24px,2.8vw,34px); line-height:1.15;
+  letter-spacing:-.02em; font-weight:600;
+  transition:opacity .5s var(--ease), transform .5s var(--ease);
+}
+.dcard .dmeta{
+  display:block; margin-top:7px;
+  font-size:11.5px; letter-spacing:.1em; color:#8b8b91;
+}
+.dcard.is-rolling .dname{ opacity:.42; }
+.dcard.is-done .dname{ opacity:1; }
+.dcard.is-done .dnum{ color:#a9a9b0; }
+
+/* 结果小工具 */
+.result-bar{
+  margin-top:clamp(22px,3vw,32px);
+  display:flex; align-items:center; justify-content:space-between;
+  gap:20px; flex-wrap:wrap;
+}
+.result-bar .meta{ font-size:12px; letter-spacing:.1em; color:#8b8b91; }
+.result-bar .meta b{ color:var(--paper); font-weight:600; }
+.result-bar .tools{ display:flex; gap:20px; }
+.result-bar .tools button{
+  font-size:12.5px; letter-spacing:.08em; color:#8b8b91;
+  padding-bottom:2px; border-bottom:1px solid #3a3a3f;
+  transition:color .24s var(--ease), border-color .24s var(--ease);
+}
+.result-bar .tools button:hover{ color:var(--paper); border-color:var(--paper); }
+
+/* ---------- 页脚 ---------- */
+.foot{
+  padding:clamp(40px,6vw,60px) 0 clamp(36px,5vw,52px);
+  border-top:1px solid var(--line);
+}
+.foot-inner{
+  display:flex; justify-content:space-between; align-items:flex-end;
+  gap:32px; flex-wrap:wrap;
+}
+.foot .brand .name{ font-size:13px; }
+.foot .legal{
+  text-align:right; font-size:12px; letter-spacing:.08em;
+  color:var(--faint); line-height:1.9;
+}
+.foot .legal span{ display:block; }
+
+/* ============================================================
+   横屏 / 投影：一屏两栏工作台
+   左栏操作，右栏出结果，页面本身不滚动
+   ============================================================ */
+@media (min-width:1000px) and (min-height:560px){
+  :root{ --pad:clamp(24px,3.4vw,52px); }
+  body{ overflow:hidden; }
+
+  main#top{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr);
+    grid-template-areas:
+      "hero  hero"
+      "setup result";
+    height:calc(100dvh - 64px - 34px);
+    margin-top:64px;
+  }
+
+  /* --- 首屏压成一条标题栏 --- */
+  .hero{
+    grid-area:hero;
+    padding:clamp(14px,2vh,22px) 0 clamp(12px,1.8vh,18px);
+    border-bottom:1px solid var(--line);
+  }
+  .hero .wrap{
+    max-width:none;
+    display:flex; align-items:baseline; flex-wrap:wrap;
+    gap:clamp(10px,1.6vw,22px);
+  }
+  .eyebrow{ margin:0; }
+  h1{ font-size:clamp(28px,4.2vh,44px); line-height:1; }
+  .hero-en{ margin:0; padding-bottom:.35em; }
+  .hero-desc{ display:none; }
+
+  /* --- 两栏通用 --- */
+  #setup, .result{
+    padding-top:clamp(16px,2.4vh,26px);
+    padding-bottom:clamp(18px,3vh,30px);
+  }
+  #setup .wrap, .result .wrap{ max-width:none; }
+  #setup .wrap{ padding-right:clamp(18px,2.4vw,34px); }
+  .result .wrap{ padding-left:clamp(18px,2.4vw,34px); }
+  .sec-head, .sec-body{ grid-template-columns:44px minmax(0,1fr); gap:16px; }
+  .sec-head{ margin-bottom:clamp(14px,2.2vh,22px); }
+  h2{ font-size:clamp(19px,2.1vw,25px); }
+  h2 .en{ margin-top:7px; font-size:10px; }
+
+  /* --- 左栏：抽取设置 --- */
+  #setup{
+    grid-area:setup;
+    border-top:0;
+    border-right:1px solid var(--line);
+    display:flex;
+    overflow:hidden;
+  }
+  /* 设置项固定、名单区吃掉剩余高度并独立滚动、按钮永远贴底 */
+  #setup > .wrap{
+    display:flex; flex-direction:column;
+    flex:1; min-width:0; padding-bottom:0;
+  }
+  #setup .sec-head{ flex:0 0 auto; }
+  #setup .sec-body{ flex:1; min-height:0; grid-template-rows:minmax(0,1fr); }
+  #setup .sec-body > div:last-child{
+    min-width:0; min-height:0;
+    display:flex; flex-direction:column;
+  }
+  .setting{ flex:0 0 auto; }
+  .picker{
+    flex:1 1 auto; min-height:0;
+    display:flex; flex-direction:column;
+  }
+  .picker-head{ flex:0 0 auto; }
+  .people{ flex:1 1 auto; min-height:0; overflow-y:auto; }
+
+  .setting{
+    grid-template-columns:clamp(52px,4.6vw,68px) minmax(0,1fr);
+    gap:clamp(10px,1.6vw,20px);
+    padding:clamp(7px,1.15vh,12px) 0;
+  }
+  .setting .k{ font-size:11px; letter-spacing:.12em; }
+  .setting .v{ gap:8px 14px; }
+  .seg button{ padding:7px 13px; font-size:12.5px; }
+  .stepper button{ width:36px; height:36px; }
+  .stepper input{ width:60px; height:36px; font-size:16px; }
+
+  .picker{ margin-top:clamp(10px,1.6vh,16px); }
+  .picker-head{ margin-bottom:8px; }
+  /* 横屏名单压缩成名字块：48 人一屏扫完，年级性别看淡出状态即可 */
+  .people{
+    max-height:none;
+    grid-template-columns:repeat(auto-fill, minmax(62px,1fr));
+    gap:5px; padding:8px;
+  }
+  .person{
+    padding:5px 6px; align-items:center; text-align:center;
+  }
+  .person .nm{ font-size:12.5px; padding-right:0; }
+  .person .mt{ display:none; }
+  .person.is-white::after,
+  .person.is-black::after{ top:3px; right:4px; font-size:8px; }
+
+  /* 抽签按钮：贴在左栏底部，不遮挡名单 */
+  .actions{
+    position:static;
+    flex:0 0 auto;
+    margin-top:auto; padding:14px 0 18px;
+    background:var(--paper);
+    border-top:1px solid var(--line);
+    gap:16px;
+  }
+  .btn-draw{ padding:14px 32px; font-size:14px; letter-spacing:.16em; }
+
+  /* --- 右栏：抽取结果 --- */
+  .result{
+    grid-area:result;
+    min-height:0;
+    border-top:0;
+    overflow-y:auto; overscroll-behavior:contain;
+  }
+  .result-empty{
+    padding-top:clamp(36px,13vh,120px);
+    font-size:13px;
+  }
+  .draw-grid{ grid-template-columns:repeat(auto-fill, minmax(148px,1fr)); }
+  .dcard{ min-height:clamp(76px,10vh,104px); padding:clamp(14px,2vh,20px) clamp(14px,1.6vw,18px); }
+  .dcard .dname{ font-size:clamp(19px,2vw,26px); }
+  .dcard .dmeta{ margin-top:5px; font-size:10.5px; }
+  .result-bar{ margin-top:clamp(16px,2.4vh,24px); }
+
+  /* --- 页脚压成一条 --- */
+  .foot{
+    height:34px; padding:0;
+    display:flex; align-items:center;
+  }
+  .foot-inner{
+    max-width:none; flex-wrap:nowrap; align-items:center;
+  }
+  .foot .brand svg{ width:15px; height:15px; }
+  .foot .brand .name{ font-size:10.5px; letter-spacing:.1em; }
+  .foot .brand .sub{ display:none; }
+  .foot .legal{ font-size:10.5px; line-height:1; white-space:nowrap; }
+  .foot .legal span{ display:inline; }
+  .foot .legal span + span::before{ content:" · "; color:#c4c4c8; }
+}
+
+/* 抽 1~2 人时放大卡片，投影看得清 */
+@media (min-width:561px){
+  .draw-grid[data-k="1"]{ grid-template-columns:minmax(0,1fr); }
+  .draw-grid[data-k="2"]{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+  .draw-grid[data-k="1"] .dcard,
+  .draw-grid[data-k="2"] .dcard{
+    min-height:clamp(150px,24vh,260px);
+    align-items:center;
+  }
+  .draw-grid[data-k="1"] .dname{ font-size:clamp(46px,6vw,92px); letter-spacing:-.03em; }
+  .draw-grid[data-k="2"] .dname{ font-size:clamp(34px,4vw,58px); letter-spacing:-.025em; }
+  .draw-grid[data-k="1"] .dmeta,
+  .draw-grid[data-k="2"] .dmeta{ margin-top:12px; font-size:12px; }
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 860px){
+  .sec-body{ grid-template-columns:1fr; gap:0; }
+  .sec-body > div:first-child{ display:none; }
+  .setting{ grid-template-columns:1fr; gap:10px; }
+  .draw-grid{ grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); }
+  .dcard{ min-height:84px; }
+
+  /* 竖屏：首屏收紧，工具页不该像落地页 */
+  .hero{
+    padding-top:clamp(80px, 11vh, 104px);
+    padding-bottom:clamp(16px, 2.4vh, 26px);
+  }
+  .hero-desc{ margin-top:16px; line-height:1.85; }
+  .sec{ padding:clamp(26px,4vh,40px) 0 clamp(36px,5vh,56px); }
+  .result{ min-height:34vh; padding:clamp(32px,5vh,52px) 0 clamp(40px,6vh,64px); }
+
+  /* 名单不再内嵌滚动，跟随页面一起滑 */
+  .people{ max-height:none; }
+}
+@media (max-width: 560px){
+  .nav-tag{ display:none; }
+  .brand .name{ font-size:12.5px; letter-spacing:.1em; }
+  .brand .sub{ font-size:7.5px; letter-spacing:.18em; }
+  .people{ grid-template-columns:repeat(auto-fill, minmax(96px,1fr)); }
+  .btn-draw{ width:100%; justify-content:center; }
+  .foot-inner{ flex-direction:column; align-items:flex-start; }
+  .foot .legal{ text-align:left; }
+}
+
+/* ============================================================
+   全屏抽签舞台
+   ============================================================ */
+.stage{
+  position:fixed; inset:0; z-index:200;
+  background:
+    radial-gradient(ellipse 68% 54% at 50% 40%, #18181c 0%, #0b0b0d 56%, #050506 100%);
+  color:var(--paper);
+  overflow:hidden;
+}
+
+.stage-fx{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  display:block;
+  pointer-events:none;
+}
+
+.stage-inner{
+  position:relative; z-index:2;
+  height:100%;
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  padding:clamp(20px,3vh,40px) clamp(24px,4vw,64px) clamp(20px,3vh,36px);
+  animation:innerIn .36s var(--ease) both;
+}
+@keyframes innerIn{
+  from{ opacity:0; transform:translateY(8px) }
+  to{ opacity:1; transform:none }
+}
+
+/* --- 顶部 --- */
+.stage-top{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:20px;
+}
+.stage-eyebrow{
+  font-size:11px; letter-spacing:.42em; text-transform:uppercase;
+  color:#5f5f66; font-weight:600; padding-left:.42em;
+}
+.stage-close{
+  font-size:12px; letter-spacing:.14em; color:#7c7c84;
+  padding:6px 0; display:inline-flex; align-items:center; gap:8px;
+  transition:color .24s var(--ease);
+}
+.stage-close span{
+  font-size:9px; letter-spacing:.12em; color:#4a4a51;
+  border:1px solid #2c2c32; padding:2px 5px;
+}
+.stage-close:hover{ color:var(--paper); }
+
+/* --- 中央 --- */
+.stage-body{
+  display:grid;
+  min-height:0;
+}
+.stage-center, .stage-final{
+  grid-area:1 / 1;
+  min-width:0; min-height:0;
+}
+
+.stage-center{
+  display:grid;
+  place-items:center;
+  padding:clamp(8px,2vh,24px) 0;
+}
+
+/* 进度条 */
+.stage-progress{
+  width:min(560px, 72vw);
+  display:flex; flex-direction:column;
+  gap:clamp(16px,2.6vh,24px);
+}
+.prog-label{
+  font-size:12px; letter-spacing:.3em; text-transform:uppercase;
+  color:#87878f; font-weight:600; text-align:center;
+  padding-left:.3em;
+}
+.prog-track{
+  position:relative;
+  height:clamp(3px, .5vh, 5px);
+  background:#242429;
+  overflow:hidden;
+}
+.prog-fill{
+  height:100%; width:0%;
+  background:linear-gradient(90deg, #5f5f6a 0%, #ffffff 86%, #ffffff 100%);
+  box-shadow:0 0 16px rgba(255,255,255,.6);
+  will-change:width;
+}
+
+.stage-final{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%; height:100%;
+  overflow-y:auto;
+  padding:clamp(6px,2vh,26px) 0;
+}
+.final-inner{
+  width:100%;
+  text-align:center;
+}
+/* 每行是一条水平居中的队列，行宽按实测名字宽度均分，末行不会只剩一两个 */
+.frow{
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+}
+.frow > .fname{ flex:0 0 auto; }
+
+.stage-final .fname{
+  display:inline-flex; flex-direction:column; align-items:center;
+  vertical-align:middle;
+  margin:.14em .34em;
+  font-weight:600; line-height:1.08; letter-spacing:-.04em;
+  white-space:nowrap;
+  animation:finalIn .58s var(--ease) both;
+  animation-delay:calc(var(--i,0) * var(--step, 70ms));
+}
+.stage-final .fname i{
+  font-style:normal;
+  font-size:.17em; letter-spacing:.2em;
+  color:#63636c; font-weight:600;
+  margin-bottom:.12em;
+}
+@keyframes finalIn{
+  from{ opacity:0; transform:translateY(16px) scale(.955) }
+  to{ opacity:1; transform:none }
+}
+
+.stage-final[data-size="xs"] .fname i{ display:none; }
+.stage-final[data-size="xs"] .fname{ margin:.16em .3em; }
+
+.stage-final[data-size="xl"] .fname{ font-size:clamp(84px, 17vw, 260px); }
+.stage-final[data-size="l"]  .fname{ font-size:clamp(56px, 10vw, 148px); }
+.stage-final[data-size="m"]  .fname{ font-size:clamp(40px, 6.6vw, 96px); }
+.stage-final[data-size="s"]  .fname{ font-size:clamp(30px, 5vw, 74px); }
+.stage-final[data-size="xs"] .fname{ font-size:clamp(20px, 3.4vw, 52px); }
+
+/* --- 底部 --- */
+.stage-foot{
+  padding-top:clamp(10px,2vh,18px);
+  display:flex; justify-content:center;
+}
+.stage-hint{
+  font-size:11.5px; letter-spacing:.2em; color:#4f4f56;
+  text-transform:uppercase;
+  transition:color .3s var(--ease);
+}
+.stage.is-complete .stage-hint{ color:#9a9aa2; }
+
+/* 舞台打开时锁住页面 */
+body.is-staging{ overflow:hidden !important; }
+
+@media (max-width: 640px){
+  .stage-inner{ padding:16px 18px 18px; }
+  .stage-progress{ width:min(560px, 84vw); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation:none !important; transition:none !important; }
+  html{ scroll-behavior:auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- ================= 导航 ================= -->
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top" aria-label="普陀中学摄影社">
+      <svg viewBox="0 0 400 400" fill="none" stroke="currentColor" stroke-width="7" aria-hidden="true">
+        <circle cx="200" cy="200" r="170"/>
+        <path d="M300 200 L250 286.6 L150 286.6 L100 200 L150 113.4 L250 113.4 Z"/>
+      </svg>
+      <span>
+        <span class="name">普陀中学摄影社</span>
+        <span class="sub">Photography Club of Putuo High School</span>
+      </span>
+    </a>
+    <div class="nav-tag">随机抽签</div>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ================= 首屏 ================= -->
+  <section class="hero">
+    <div class="wrap">
+      <div class="eyebrow">Random Draw</div>
+      <h1>抽签</h1>
+      <div class="hero-en">Draw the Name</div>
+      <p class="hero-desc">
+        从社员名单里随机抽人。可以限定年级和性别，<br>
+        也可以指定只能抽谁、或者避开谁。
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= 设置 ================= -->
+  <section class="sec" id="setup">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-num">01</div>
+        <h2>抽取设置<span class="en">Setup</span></h2>
+      </div>
+
+      <div class="sec-body">
+        <div></div>
+        <div>
+
+          <!-- 人数 -->
+          <div class="setting">
+            <div class="k">抽取人数</div>
+            <div class="v">
+              <div class="stepper">
+                <button type="button" id="minus" aria-label="减少人数">−</button>
+                <input type="number" id="count" value="1" min="1" step="1" aria-label="抽取人数">
+                <button type="button" id="plus" aria-label="增加人数">+</button>
+              </div>
+              <span class="hint-line" id="poolHint">可抽 <b>48</b> 人</span>
+            </div>
+          </div>
+
+          <!-- 年级 -->
+          <div class="setting">
+            <div class="k">年级</div>
+            <div class="v">
+              <div class="seg" data-group="grade">
+                <button type="button" data-val="all" class="is-on">全部</button>
+                <button type="button" data-val="1">只抽高一</button>
+                <button type="button" data-val="2">只抽高二</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 性别 -->
+          <div class="setting">
+            <div class="k">性别</div>
+            <div class="v">
+              <div class="seg" data-group="gender">
+                <button type="button" data-val="all" class="is-on">全部</button>
+                <button type="button" data-val="男">只抽男生</button>
+                <button type="button" data-val="女">只抽女生</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 名单 -->
+          <div class="setting">
+            <div class="k">名单</div>
+            <div class="v">
+              <div class="seg" data-group="target">
+                <button type="button" data-val="white" class="is-on">只抽选择的部分</button>
+                <button type="button" data-val="black">不抽选中的部分</button>
+              </div>
+              <span class="hint-line" id="targetHint">没有选择任何人时，从全体社员中抽</span>
+            </div>
+          </div>
+
+          <!-- 人员选择 -->
+          <div class="picker">
+            <div class="picker-head">
+              <div class="t">点击姓名标记 <span id="pickedCount">只抽 0 人 · 不抽 0 人</span></div>
+              <div class="acts">
+                <button type="button" id="pickAll">全选当前范围</button>
+                <button type="button" id="pickClear">清空当前名单</button>
+              </div>
+            </div>
+            <div class="people" id="people"></div>
+          </div>
+
+          <!-- 开始 -->
+          <div class="actions">
+            <button class="btn-draw" id="drawBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 12h16"/><path d="M14 6l6 6-6 6"/>
+              </svg>
+              <span class="lbl">开始抽签</span>
+            </button>
+            <span class="hint-line" id="scopeHint"></span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 结果 ================= -->
+  <section class="result" id="result">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-num">02</div>
+        <h2>抽取结果<span class="en">Result</span></h2>
+      </div>
+
+      <div id="emptyState" class="result-empty">
+        还没有抽签。设置好条件后，点「开始抽签」。
+      </div>
+
+      <div class="draw-grid" id="drawGrid" hidden></div>
+
+      <div class="result-bar" id="resultBar" hidden>
+        <div class="meta" id="resultMeta"></div>
+        <div class="tools">
+          <button type="button" id="copyBtn">复制名单</button>
+          <button type="button" id="clearBtn">清除结果</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= 页脚 ================= -->
+<footer class="foot">
+  <div class="wrap foot-inner">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 400 400" fill="none" stroke="currentColor" stroke-width="7" aria-hidden="true">
+        <circle cx="200" cy="200" r="170"/>
+        <path d="M300 200 L250 286.6 L150 286.6 L100 200 L150 113.4 L250 113.4 Z"/>
+      </svg>
+      <span>
+        <span class="name">普陀中学摄影社</span>
+        <span class="sub">Photography Club of Putuo High School</span>
+      </span>
+    </a>
+    <div class="legal">
+      <span>©️ Copyright 乐轩宁 of 普陀中学摄影社</span>
+      <span>抽签结果由浏览器本地随机生成</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ================= 全屏抽签舞台 ================= -->
+<div class="stage" id="stage" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="抽签">
+  <canvas class="stage-fx" id="stageFx" aria-hidden="true"></canvas>
+
+  <div class="stage-inner">
+    <div class="stage-top">
+      <span class="stage-eyebrow">Random Draw</span>
+      <button type="button" class="stage-close" id="stageClose">关闭 <span>ESC</span></button>
+    </div>
+
+    <div class="stage-body">
+      <div class="stage-center" id="stageCenter">
+        <div class="stage-progress">
+          <div class="prog-label" id="progLabel">抽签中</div>
+          <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+        </div>
+      </div>
+
+      <div class="stage-final" id="stageFinal" hidden>
+        <div class="final-inner" id="stageFinalInner"></div>
+      </div>
+    </div>
+
+    <div class="stage-foot">
+      <span class="stage-hint" id="stageHint">抽签中</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     名单：来自《摄影社成员登记表》
+     g = 1 高一 / 2 高二
+     ============================================================ */
+  var MEMBERS = [
+    { n:'史珈菡', g:1, s:'女' }, { n:'毛誉童', g:1, s:'女' }, { n:'周煜婷', g:1, s:'女' },
+    { n:'周乐瑶', g:1, s:'女' }, { n:'李若菡', g:1, s:'女' }, { n:'王艺璇', g:1, s:'女' },
+    { n:'叶涵',   g:1, s:'女' }, { n:'高子淇', g:1, s:'女' }, { n:'邬欣原', g:1, s:'女' },
+    { n:'王艺霖', g:1, s:'女' }, { n:'沈怡冉', g:1, s:'女' }, { n:'顾紫羽', g:1, s:'女' },
+    { n:'乐致远', g:1, s:'男' }, { n:'浦佳芮', g:1, s:'女' }, { n:'杨荞语', g:1, s:'女' },
+    { n:'陈禹珲', g:1, s:'男' }, { n:'周琪瀚', g:1, s:'男' }, { n:'邵若涵', g:1, s:'女' },
+    { n:'张珂凡', g:1, s:'女' },
+
+    { n:'洪菀',   g:2, s:'女' }, { n:'徐梓璐', g:2, s:'女' }, { n:'何晟迪', g:2, s:'女' },
+    { n:'赵晨然', g:2, s:'男' }, { n:'戴绎栩', g:2, s:'女' }, { n:'朱语霏', g:2, s:'女' },
+    { n:'毛梓璇', g:2, s:'女' }, { n:'潘宣霖', g:2, s:'女' }, { n:'施懿真', g:2, s:'女' },
+    { n:'黄诗芸', g:2, s:'女' }, { n:'虞琪涵', g:2, s:'女' }, { n:'颜煜昕', g:2, s:'女' },
+    { n:'汪天瑞', g:2, s:'男' }, { n:'何奕璇', g:2, s:'女' }, { n:'毛姿羽', g:2, s:'女' },
+    { n:'王可贞', g:2, s:'女' }, { n:'任箫语', g:2, s:'女' }, { n:'庄奕阳', g:2, s:'男' },
+    { n:'虞博涵', g:2, s:'男' }, { n:'虞雨铮', g:2, s:'男' }, { n:'毛浩雨', g:2, s:'男' },
+    { n:'吕佳臻', g:2, s:'男' }, { n:'乐轩宁', g:2, s:'男' }, { n:'姚思迪', g:2, s:'女' },
+    { n:'乌思玥', g:2, s:'女' }, { n:'李依沅', g:2, s:'女' }, { n:'虞乐乐', g:2, s:'女' },
+    { n:'孙炜航', g:2, s:'男' }, { n:'胡焓煜', g:2, s:'男' }
+  ];
+
+  var state = {
+    count: 1,
+    grade: 'all',
+    gender: 'all',
+    target: 'white',   // 当前正在编辑哪一份名单
+    white: new Set(),  // 只抽名单：为空则不限定；非空则只从这些人里抽
+    black: new Set(),  // 不抽名单：始终排除
+    rolling: false,
+    lastResult: []
+  };
+
+  var elPeople   = document.getElementById('people');
+  var elCount    = document.getElementById('count');
+  var elMinus    = document.getElementById('minus');
+  var elPlus     = document.getElementById('plus');
+  var elPoolHint = document.getElementById('poolHint');
+  var elScope    = document.getElementById('scopeHint');
+  var elPicked   = document.getElementById('pickedCount');
+  var elTarget   = document.getElementById('targetHint');
+  var elDrawBtn  = document.getElementById('drawBtn');
+  var elGrid     = document.getElementById('drawGrid');
+  var elEmpty    = document.getElementById('emptyState');
+  var elBar      = document.getElementById('resultBar');
+  var elMeta     = document.getElementById('resultMeta');
+  var reduce     = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- 人员面板 ---------- */
+  function buildPeople() {
+    var frag = document.createDocumentFragment();
+    MEMBERS.forEach(function (m, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'person';
+      b.dataset.i = i;
+      b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = '<span class="nm">' + m.n + '</span>' +
+                    '<span class="mt">' + (m.g === 1 ? '高一' : '高二') + ' · ' + m.s + '</span>';
+      b.title = m.n + ' · ' + (m.g === 1 ? '高一' : '高二') + ' · ' + m.s;
+      b.addEventListener('click', function () {
+        var cur = curList();
+        if (cur.has(i)) {
+          cur.delete(i);           // 再点一次：从当前名单移除
+        } else {
+          state.white.delete(i);   // 同一人只能待在一份名单里
+          state.black.delete(i);
+          cur.add(i);
+        }
+        syncPickedUI();
+      });
+      frag.appendChild(b);
+    });
+    elPeople.appendChild(frag);
+  }
+
+  /* ---------- 当前正在编辑的名单 ---------- */
+  function curList() {
+    return state.target === 'black' ? state.black : state.white;
+  }
+
+  /* ---------- 当前筛选范围（年级×性别） ---------- */
+  function inScope(m) {
+    if (state.grade !== 'all' && String(m.g) !== state.grade) return false;
+    if (state.gender !== 'all' && m.s !== state.gender) return false;
+    return true;
+  }
+
+  /* ---------- 最终可抽池 ----------
+     只抽名单为空 = 不限定；非空 = 只从名单里抽
+     不抽名单 = 始终排除，且优先级高于只抽名单（两边都在 = 抽不到） */
+  function pool() {
+    return MEMBERS.filter(function (m, i) {
+      if (!inScope(m)) return false;
+      if (state.black.has(i)) return false;
+      if (state.white.size && !state.white.has(i)) return false;
+      return true;
+    });
+  }
+
+  /* ---------- 刷新界面 ---------- */
+  function render() {
+    var p = pool();
+    var n = p.length;
+
+    // 人数上限跟随可抽池
+    if (state.count > n) state.count = Math.max(n, 1);
+    if (state.count < 1) state.count = 1;
+    elCount.value = state.count;
+
+    elMinus.disabled = state.count <= 1;
+    elPlus.disabled  = state.count >= n;
+
+    elPoolHint.innerHTML = n > 0
+      ? '可抽 <b>' + n + '</b> 人'
+      : '当前条件下没有可抽的人';
+    elPoolHint.classList.toggle('is-warn', n === 0);
+
+    elDrawBtn.disabled = n === 0 || state.rolling;
+
+    // 范围描述
+    var parts = [];
+    if (state.grade === '1') parts.push('高一');
+    if (state.grade === '2') parts.push('高二');
+    if (state.gender !== 'all') parts.push(state.gender + '生');
+    var scopeText = parts.length ? parts.join(' · ') : '全体社员';
+    if (state.white.size) scopeText += ' · 只抽 ' + state.white.size + ' 人';
+    if (state.black.size) scopeText += ' · 不抽 ' + state.black.size + ' 人';
+    elScope.textContent = '范围：' + scopeText + '，共 ' + n + ' 人';
+
+    // 当前编辑名单的作用说明
+    if (elTarget) {
+      elTarget.textContent = state.target === 'white'
+        ? (state.white.size ? '只从中选的 ' + state.white.size + ' 人中抽' : '没有选择任何人时，从全体社员中抽')
+        : (state.black.size ? '中选的 ' + state.black.size + ' 人不会被抽到' : '没有排除任何人');
+    }
+
+    // 面板里淡出范围外的人
+    Array.prototype.forEach.call(elPeople.children, function (b) {
+      var m = MEMBERS[+b.dataset.i];
+      b.classList.toggle('is-out', !inScope(m));
+    });
+  }
+
+  /* ---------- 分段控件 ---------- */
+  document.querySelectorAll('.seg').forEach(function (seg) {
+    seg.addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-val]');
+      if (!btn) return;
+      var group = seg.dataset.group;
+      seg.querySelectorAll('button').forEach(function (b) {
+        b.classList.toggle('is-on', b === btn);
+      });
+      state[group] = btn.dataset.val;
+      render();
+    });
+  });
+
+  /* ---------- 步进 ---------- */
+  function setCount(v) {
+    var n = pool().length;
+    v = Math.max(1, Math.min(Math.round(v) || 1, Math.max(n, 1)));
+    state.count = v;
+    render();
+  }
+  elMinus.addEventListener('click', function () { setCount(state.count - 1); });
+  elPlus.addEventListener('click',  function () { setCount(state.count + 1); });
+  elCount.addEventListener('input', function () {
+    var v = parseInt(elCount.value, 10);
+    if (!isNaN(v)) setCount(v);
+  });
+  elCount.addEventListener('blur', function () { setCount(state.count); });
+
+  /* ---------- 全选 / 清空 ---------- */
+  document.getElementById('pickAll').addEventListener('click', function () {
+    var cur = curList();
+    MEMBERS.forEach(function (m, i) {
+      if (!inScope(m)) return;                              // 只处理当前范围
+      if (state.white.has(i) || state.black.has(i)) return;  // 已在另一份名单里就跳过
+      cur.add(i);
+    });
+    syncPickedUI();
+  });
+  document.getElementById('pickClear').addEventListener('click', function () {
+    curList().clear();   // 只清当前这一份
+    syncPickedUI();
+  });
+  function syncPickedUI() {
+    Array.prototype.forEach.call(elPeople.children, function (b) {
+      var i = +b.dataset.i;
+      var w = state.white.has(i), k = state.black.has(i);
+      b.classList.toggle('is-white', w);
+      b.classList.toggle('is-black', k);
+      b.setAttribute('aria-pressed', (w || k) ? 'true' : 'false');
+    });
+    elPicked.textContent = '只抽 ' + state.white.size + ' 人 · 不抽 ' + state.black.size + ' 人';
+    render();
+  }
+
+  /* ---------- 洗牌（Fisher-Yates，取前 k 个） ---------- */
+  function sample(list, k) {
+    var a = list.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a.slice(0, k);
+  }
+
+  /* ============================================================
+     粒子层：背景光尘 + 定格爆发
+     ============================================================ */
+  var fx = (function () {
+    var cv = document.getElementById('stageFx');
+    var ctx = cv.getContext('2d');
+    var W = 0, H = 0, dpr = 1;
+    var sparks = [];   // 爆发粒子
+    var dust = [];     // 背景光尘
+    var raf = 0, last = 0, lastDraw = 0;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = cv.clientWidth || window.innerWidth;
+      H = cv.clientHeight || window.innerHeight;
+      cv.width = Math.round(W * dpr);
+      cv.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function seedDust() {
+      var n = Math.min(120, Math.max(32, Math.round(W * H / 16000)));
+      dust = [];
+      for (var i = 0; i < n; i++) {
+        dust.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          r: 0.5 + Math.random() * 2.1,
+          vx: (Math.random() - 0.5) * 0.16,
+          vy: -0.06 - Math.random() * 0.26,
+          a: 0.05 + Math.random() * 0.26,
+          tw: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    function burst(cx, cy, count, power) {
+      for (var i = 0; i < count; i++) {
+        var ang = Math.random() * Math.PI * 2;
+        var sp = power * (0.22 + Math.random() * 0.95);
+        sparks.push({
+          x: cx, y: cy,
+          vx: Math.cos(ang) * sp,
+          vy: Math.sin(ang) * sp - power * 0.12,
+          life: 560 + Math.random() * 700,
+          age: 0,
+          w: 0.7 + Math.random() * 1.5,
+          bright: Math.random() < 0.16
+        });
+      }
+      if (sparks.length > 760) sparks.splice(0, sparks.length - 760);
+      start();
+    }
+
+    function step(now) {
+      // 有爆发粒子时全速，只有光尘时降到 30fps
+      var gap = sparks.length ? 0 : 30;
+      if (now - lastDraw < gap) { raf = requestAnimationFrame(step); return; }
+      var dt = Math.min(now - last, 60);
+      last = now;
+      lastDraw = now;
+      var f = dt / 16.67;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // 背景光尘
+      for (var i = 0; i < dust.length; i++) {
+        var d = dust[i];
+        d.x += d.vx * f;
+        d.y += d.vy * f;
+        d.tw += 0.018 * f;
+        if (d.y < -12) { d.y = H + 12; d.x = Math.random() * W; }
+        if (d.x < -12) d.x = W + 12;
+        if (d.x > W + 12) d.x = -12;
+        var al = d.a * (0.55 + 0.45 * Math.sin(d.tw));
+        if (al <= 0) continue;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r, 0, 6.2832);
+        ctx.fillStyle = 'rgba(255,255,255,' + al.toFixed(3) + ')';
+        ctx.fill();
+      }
+
+      // 爆发粒子（短线拖尾）
+      for (var j = sparks.length - 1; j >= 0; j--) {
+        var p = sparks[j];
+        p.age += dt;
+        if (p.age >= p.life) { sparks.splice(j, 1); continue; }
+        p.vy += 0.014 * f;
+        p.vx *= 0.994;
+        p.vy *= 0.994;
+        p.x += p.vx * f;
+        p.y += p.vy * f;
+
+        var t = p.age / p.life;
+        var a2 = (1 - t) * (1 - t);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - p.vx * 2.4, p.y - p.vy * 2.4);
+        ctx.strokeStyle = p.bright
+          ? 'rgba(255,255,255,' + a2.toFixed(3) + ')'
+          : 'rgba(196,196,204,' + (a2 * 0.8).toFixed(3) + ')';
+        ctx.lineWidth = p.w * (1 - t * 0.55);
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+
+      raf = requestAnimationFrame(step);
+    }
+
+    function start() {
+      if (raf) return;
+      last = lastDraw = performance.now();
+      raf = requestAnimationFrame(step);
+    }
+    function stop() {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    }
+    function clear() {
+      sparks.length = 0;
+      ctx.clearRect(0, 0, W, H);
+    }
+
+    return {
+      init: function () { resize(); seedDust(); start(); },
+      resize: function () { resize(); seedDust(); },
+      burst: burst, stop: stop, clear: clear
+    };
+  })();
+
+  /* ============================================================
+     全屏抽签舞台
+     ============================================================ */
+  var elStage      = document.getElementById('stage');
+  var elStageCenter= document.getElementById('stageCenter');
+  var elStageFinal = document.getElementById('stageFinal');
+  var elStageFinalIn = document.getElementById('stageFinalInner');
+  var elStageHint  = document.getElementById('stageHint');
+  var elStageClose = document.getElementById('stageClose');
+  var elProgFill   = document.getElementById('progFill');
+  var elProgLabel  = document.getElementById('progLabel');
+
+  var stage = { open: false, complete: false, list: [], timer: 0, burstTimer: 0 };
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function metaOf(m) { return (m.g === 1 ? '高一' : '高二') + ' · ' + m.s; }
+
+  /* 完成态：全部结果一次性铺满全屏，字号按人数自动匹配 */
+  function showFinal() {
+    var list = stage.list, n = list.length;
+    elStageFinal.dataset.size = n === 1 ? 'xl' : n <= 4 ? 'l' : n <= 9 ? 'm' : n <= 16 ? 's' : 'xs';
+    // 淡入节拍跟着人数压缩，人多时总时长也控制在 ~0.9s
+    var step = Math.min(70, 900 / n);
+    elStageFinal.style.setProperty('--step', step.toFixed(1) + 'ms');
+
+    var labels = list.map(function (m, i) {
+      return (n > 1 ? '<i>' + pad2(i + 1) + '</i>' : '') + m.n;
+    });
+
+    // 1) 先铺一遍把每个名字的实测宽度（含外边距）量出来
+    //    先显示但不可见，量完立刻重排，中间不会产生绘制，所以不会闪
+    elStageCenter.hidden = true;
+    elStageFinal.hidden = false;
+    elStageFinal.style.visibility = 'hidden';
+    elStageFinalIn.innerHTML = '';
+
+    var nodes = [], widths = [], total = 0, i, w;
+    for (i = 0; i < n; i++) {
+      var d = document.createElement('span');
+      d.className = 'fname';
+      d.style.setProperty('--i', i);
+      d.innerHTML = labels[i];
+      elStageFinalIn.appendChild(d);
+      nodes.push(d);
+    }
+
+    var avail = elStageFinalIn.clientWidth || elStageFinal.clientWidth || window.innerWidth;
+    for (i = 0; i < n; i++) {
+      var cs = getComputedStyle(nodes[i]);
+      w = nodes[i].getBoundingClientRect().width +
+          (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0);
+      widths.push(w);
+      total += w;
+    }
+
+    // 2) 最少需要几行
+    var need = 1, acc = 0;
+    for (i = 0; i < n; i++) {
+      if (acc > 0 && acc + widths[i] > avail) { need++; acc = 0; }
+      acc += widths[i];
+    }
+
+    // 3) 先按人数均分（多出来的摊到前几行），再按实测宽度兜底，超宽就挪到下一行
+    var base = Math.floor(n / need), extra = n % need;
+    var plan = [], idx = 0, row, rowW, c;
+    for (i = 0; i < need; i++) {
+      c = base + (i < extra ? 1 : 0);
+      row = []; rowW = 0;
+      while (c > 0 && idx < n) {
+        if (row.length && rowW + widths[idx] > avail) break;
+        row.push(idx); rowW += widths[idx]; idx++; c--;
+      }
+      if (row.length) plan.push(row);
+    }
+    // 兜底：万一还有剩，补到最后一行
+    while (idx < n) { plan[plan.length - 1].push(idx); idx++; }
+
+    // 4) 按行重排
+    elStageFinalIn.innerHTML = '';
+    plan.forEach(function (idxs) {
+      var row = document.createElement('div');
+      row.className = 'frow';
+      idxs.forEach(function (idx) {
+        var el2 = document.createElement('span');
+        el2.className = 'fname';
+        el2.style.setProperty('--i', idx);
+        el2.innerHTML = labels[idx];
+        row.appendChild(el2);
+      });
+      elStageFinalIn.appendChild(row);
+    });
+
+    elStageFinal.style.visibility = '';
+  }
+
+  /* 进度条：dur 毫秒从 0 走到 100%，走完即揭晓 */
+  function runProgress(dur, done) {
+    elProgFill.style.transition = 'none';
+    elProgFill.style.width = '0%';
+    void elProgFill.offsetWidth;
+    elProgFill.style.transition = 'width ' + dur + 'ms cubic-bezier(.45,.05,.55,.95)';
+    elProgFill.style.width = '100%';
+    stage.timer = setTimeout(function () {
+      stage.timer = 0;
+      done();
+    }, dur);
+  }
+
+  function openStage(list) {
+    stage.open = true;
+    stage.complete = false;
+    stage.list = list;
+
+    elStage.hidden = false;
+    elStage.setAttribute('aria-hidden', 'false');
+    elStage.classList.remove('is-complete');
+    elStage.classList.add('is-rolling');
+    elStageFinalIn.innerHTML = '';
+    elStageFinal.hidden = true;
+    elStageCenter.hidden = false;
+    elProgLabel.textContent = '抽签中 · ' + list.length + ' 人';
+    elStageHint.textContent = reduce ? '按空格或点「关闭」查看结果' : '按下空格跳过动画';
+    document.body.classList.add('is-staging');
+
+    if (!reduce) {
+      fx.init();
+      fx.burst(window.innerWidth / 2, window.innerHeight * 0.44, 110, 11);
+    }
+
+    // 减少动效：直接出结果
+    if (reduce) { revealAll(); return; }
+
+    // 进度条 1.4~1.8s，走完一次性揭晓
+    runProgress(1400 + Math.round(Math.random() * 400), revealAll);
+  }
+
+  /* 一次性揭晓：全部结果同时铺满全屏 */
+  function revealAll() {
+    if (!stage.open || stage.complete) return;
+    stage.complete = true;
+    if (stage.timer) { clearTimeout(stage.timer); stage.timer = 0; }
+    if (stage.burstTimer) { clearTimeout(stage.burstTimer); stage.burstTimer = 0; }
+
+    elStage.classList.remove('is-rolling');
+    elStage.classList.add('is-complete');
+    elStageHint.textContent = reduce ? '按空格或点「关闭」查看结果' : '按空格或点「关闭」返回页面';
+
+    // 进度条瞬间补满再隐去，避免跳过时停在半路
+    if (elProgFill) {
+      elProgFill.style.transition = 'width .18s linear';
+      elProgFill.style.width = '100%';
+    }
+
+    showFinal();
+
+    var n = stage.list.length;
+    if (!reduce) {
+      fx.burst(window.innerWidth / 2, window.innerHeight * 0.47, 140, 12);
+      // 名字铺开后再补一次，收个尾
+      stage.burstTimer = setTimeout(function () {
+        stage.burstTimer = 0;
+        if (!stage.open) return;
+        fx.burst(window.innerWidth / 2, window.innerHeight * 0.47, 70, 8);
+      }, Math.min(900, n * 70) + 560);
+    }
+
+    // 页面侧收尾
+    state.rolling = false;
+    elDrawBtn.disabled = pool().length === 0;
+    elDrawBtn.querySelector('.lbl').textContent = '再抽一次';
+    elBar.hidden = false;
+    elMeta.innerHTML = '共抽出 <b>' + n + '</b> 人 · ' +
+      new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  }
+
+  function closeStage() {
+    if (!stage.open) return;
+    if (!stage.complete) revealAll();
+
+    stage.open = false;
+    if (stage.timer) { clearTimeout(stage.timer); stage.timer = 0; }
+    if (stage.burstTimer) { clearTimeout(stage.burstTimer); stage.burstTimer = 0; }
+    elStage.hidden = true;
+    elStage.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('is-staging');
+    fx.stop();
+    fx.clear();
+
+    // 单栏（竖屏）时把结果带到眼前；两栏横屏结果本来就在视口内
+    var twoCol = window.matchMedia('(min-width:1000px) and (min-height:560px)').matches;
+    if (!twoCol) {
+      document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  /* 空格：跳过滚动，直接出结果 */
+  function skipAll() {
+    revealAll();
+  }
+
+  /* ---------- 抽签 ---------- */
+  function draw() {
+    if (state.rolling || stage.open) return;
+    var p = pool();
+    if (!p.length) return;
+
+    var k = Math.min(state.count, p.length);
+    var picked = sample(p, k);
+    state.lastResult = picked;
+    state.rolling = true;
+    elDrawBtn.disabled = true;
+    elDrawBtn.querySelector('.lbl').textContent = '抽签中';
+
+    // 页面里的结果网格先写好，舞台关掉就能看到
+    elEmpty.hidden = true;
+    elBar.hidden = true;
+    elGrid.hidden = false;
+    elGrid.innerHTML = '';
+    elGrid.dataset.k = k <= 2 ? String(k) : '';
+
+    picked.forEach(function (m, i) {
+      var d = document.createElement('div');
+      d.className = 'dcard is-done';
+      d.innerHTML =
+        '<span class="dnum">' + pad2(i + 1) + '</span>' +
+        '<span class="dbox">' +
+          '<span class="dname">' + m.n + '</span>' +
+          '<span class="dmeta">' + metaOf(m) + '</span>' +
+        '</span>';
+      elGrid.appendChild(d);
+    });
+
+    openStage(picked);
+  }
+
+  elDrawBtn.addEventListener('click', draw);
+  elStageClose.addEventListener('click', closeStage);
+
+  window.addEventListener('resize', function () {
+    if (stage.open) fx.resize();
+  });
+
+  /* ---------- 复制 / 清除 ---------- */
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    if (!state.lastResult.length) return;
+    var text = state.lastResult.map(function (m) { return m.n; }).join('、');
+    var btn = this;
+    var done = function () {
+      var old = btn.textContent;
+      btn.textContent = '已复制';
+      setTimeout(function () { btn.textContent = old; }, 1400);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function () {
+    state.lastResult = [];
+    elGrid.hidden = true;
+    elGrid.innerHTML = '';
+    elBar.hidden = true;
+    elEmpty.hidden = false;
+    elDrawBtn.querySelector('.lbl').textContent = '开始抽签';
+    elDrawBtn.disabled = pool().length === 0;
+  });
+
+  /* ---------- 键盘：空格 / 回车抽签、Esc 关舞台 ---------- */
+  document.addEventListener('keydown', function (e) {
+    var tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+
+    if (stage.open) {
+      if (e.key === 'Escape') { e.preventDefault(); closeStage(); }
+      else if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        if (stage.complete) closeStage(); else skipAll();
+      }
+      return;
+    }
+
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      if (!elDrawBtn.disabled) draw();
+    }
+  });
+
+  /* ---------- 初始化 ---------- */
+  buildPeople();
+  render();
+})();
+</script>
+</body>
+</html>
