@@ -1,0 +1,8 @@
+<!doctype html>
+<!-- 临时验证页：自动解锁并跳转到指定讲解师空间，验证完删除 -->
+<meta charset="utf-8">
+<script>
+sessionStorage.setItem('cp_unlocked', '1');
+var t = (new URLSearchParams(location.search).get('t')) || 'hw';
+location.replace('space.html?t=' + t);
+</script>
