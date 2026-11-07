@@ -22,7 +22,7 @@
 
 ## 常用任务（速查）
 
-- **发布更新**：`git add -A && git commit -m "..." && git push`（本机已装 `~/bin/gh` 并登录，凭据自动可用；主人自行放入的课件用 `git add -A` 一并提交）
+- **发布更新**：`git add -A && git commit -m "..." && git push`（本机已装 `~/bin/gh` 并登录，凭据自动可用；主人自行放入的课件用 `git add -A` 一并提交）。**推送被拒属正常**：每次推送后工作流都会自动提交 files.json（时间戳变化），远端总是领先一个 commit——先 `git fetch origin && git merge origin/main --no-edit` 再推（本机 git 未配 pull 策略，直接 `git pull` 会报 divergent）。推送讲师仓库同理
 - **加课件**：小文件放进讲解师文件夹 → 推送本仓库；大文件（几十 MB 级）放进 `cp-<账号>` 仓库根目录 → 推送该仓库。各自工作流 1-2 分钟自动刷新清单
 - **改密码**：`printf '新密码' | shasum -a 256` → 替换 `CONFIG.passwordHash` → 推送
 - **加讲解师**：新建同名文件夹 + `CONFIG.teachers` 加账号 → 推送；要个人仓库的话：建 `cp-<账号>`（拷贝任一讲师仓库工作流 + 开 Pages）+ `CONFIG.teacherRepos` 加映射
@@ -32,7 +32,7 @@
 
 **项目已迁移到 `KylinLe/cp` 并上线**：`https://kylinle.github.io/cp/`（全站验证通过）。旧仓库 `classroom` 弃用，待主人删除或归档。
 
-- [x] **讲解师个人课件仓库方案上线**：5 个仓库 cp-hw/lxn/lzy/swh/yyz 已建好（公开 + Pages 开启 + 各自清单工作流），平台已支持双源扫描与「本平台 / 讲师仓库」标注
+- [x] **讲解师个人课件仓库方案上线**：5 个仓库 cp-hw/lxn/lzy/swh/yyz 已建好（公开 + Pages 开启 + 各自清单工作流），平台已支持双源扫描与「本平台 / 讲师仓库」标注；已端到端实测（讲师仓库课件出现在空间并标注、点击正常打开，测试文件已清理）
 - [ ] 旧仓库 classroom 由主人处理（删除 / 归档 / 关闭 Pages）
 
 ## 环境事实
@@ -40,6 +40,6 @@
 - 主人浏览器访问 `api.github.com` 不可靠（疑似系统代理）；实际主力通道是 files.json 清单
 - 终端侧 curl/git/gh 基本可用，但 `github.com` 会**间歇性**连接失败（约 75 秒超时）——推送失败直接重试，别改代码；`api.github.com` 稳定
 - 主人不是程序员；历史上有过网页端上传与本地不一致的双向漂移（迁移后已消除），维护前先核对两边状态
-- 匿名 GitHub API 只能读不能删；删除远程文件需主人网页端操作（或提供凭据）
+- 匿名 GitHub API 只能读不能删；本机 `~/bin/gh` 已登录 KylinLe（repo 权限），删除/修改远程文件可由 AI 用 `gh api` 代操作——动主人内容前先确认
 
 完整文档：**[README.md](README.md)**（必读，含背景/站点地图/部署/更新日志）· [测试清单.md](测试清单.md)（给主人的检查手册）

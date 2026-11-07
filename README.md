@@ -153,6 +153,7 @@ space.html?t=hw
   git push
   ```
   主人自行放进文件夹的课件会以未提交状态出现，`git add -A` 会一并包含，无需区分。
+- **推送被拒属正常**：每次推送后工作流都会自动提交 files.json（`generated_at` 时间戳变化），远端总是比本地多一个 commit。推送被拒时先 `git fetch origin && git merge origin/main --no-edit` 再推（本机 git 未配置 pull 合并策略，直接 `git pull` 会报 divergent）。推送讲师仓库同理。
 - **网络注意**：本机访问 `github.com` 会**间歇性**连接失败（TCP 超时约 75 秒，非配置问题，重试即可）；`api.github.com` 相对稳定。推送失败直接重试。
 - **Pages 设置**：仓库 Settings → Pages → main 分支根目录（已配好，勿动）。
 - 首次部署（2026-11-07）即由 AI 按上述方式完成：初始化 git、合并远程初始 README、推送 15 个文件、开启 Pages、验证上线。
