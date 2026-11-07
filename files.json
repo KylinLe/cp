@@ -1,6 +1,18 @@
 {
-  "generated_at": "2026-11-07T12:37:59Z",
+  "generated_at": "2026-11-07T12:45:00Z",
   "teachers": {
+    "css": [
+      {
+        "name": "style.css",
+        "size": 12155
+      }
+    ],
+    "js": [
+      {
+        "name": "app.js",
+        "size": 23497
+      }
+    ],
     "lxn": [
       {
         "name": "摄影社签到表.pdf",
