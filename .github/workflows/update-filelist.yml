@@ -61,10 +61,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet files.json; then
+          git add files.json
+          if git diff --cached --quiet files.json; then
             echo "files.json 没有变化，跳过提交"
           else
-            git add files.json
             git commit -m "chore: 更新课件清单 files.json [skip ci]"
             git push origin HEAD:main
             echo "files.json 已提交"

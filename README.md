@@ -11,6 +11,7 @@
 
 - 访问需输入密码 `139572`，通过后从 5 个讲解师账号（`hw` / `lxn` / `lzy` / `swh` / `yyz`）中选择进入，查看对应讲解师的课件
 - 课件列表**自动识别**：把课件放进讲解师文件夹并上传 GitHub，列表自动出现，无需改任何代码
+- 课件可来自**两处**：平台仓库里的讲解师文件夹，或讲解师个人的 GitHub 课件仓库（`cp-hw` 等 5 个），列表每行右侧标注「本平台 / 讲师仓库」（2026-11-07 起，解决单仓库大小限制）
 - HTML 课件点击**播放**（新标签页）；PPT / PPTX / PDF / DOC / DOCX 课件点击**下载**（原需求只有 PPT，后来补了 PDF/DOC/DOCX）
 - 外观延续社团主页 aaa.html 的黑白细线极简风格；社团英文名 **Photography Club of Putuo High School**；品牌图 `logo.png`
 - 密码每次浏览器会话只输一次；直接打开讲解师空间页会跳回密码门，输完自动回跳
@@ -46,7 +47,8 @@ index.html（入口页，含两个视图）
     ├─ 快捷按钮：随机抽人 → sjcr.html；摄影社官网 → 外链
     └─ 5 个讲解师入口 ──→ space.html?t=<账号>（教师空间页）
                           ├─ 导航：返回首页 / 切换账号
-                          ├─ 课件列表（三通道加载，数量旁标注数据源）
+                          ├─ 课件列表（平台文件夹三通道加载 + 讲师个人仓库清单，
+                          │   数量旁标注数据源；每行右侧标注「本平台 / 讲师仓库」）
                           └─ html 新标签页播放；其余格式下载
 
 sjcr.html  随机抽人工具（独立页面，内联样式，不进讲解师空间流程）
@@ -74,29 +76,34 @@ classplatform/
 └── .git/               # git 仓库元数据（origin = KylinLe/cp；空文件夹不进入版本控制）
 ```
 
+**配套的 5 个讲解师个人课件仓库**（同在 KylinLe 账号，不在本文件夹内）：`cp-hw` / `cp-lxn` / `cp-lzy` / `cp-swh` / `cp-yyz`。每个仓库：根目录放课件 + 自己的 files.json 清单工作流 + GitHub Pages（main 根目录，与平台同域名）+ 一份给主人的说明 README。网站扫描该仓库的 files.json，把课件合并进对应讲解师的列表。
+
 ## 核心机制：三通道文件列表
 
 ```
 space.html?t=hw
    │
    ├─ ① 会话缓存 sessionStorage ─────── 5 分钟内直接命中，不发请求
-   ├─ ② GitHub Contents API ─────────── 即时；个别网络环境连不上会降级
-   ├─ ③ files.json 清单（与网站同源）── 推送后 1-2 分钟出现，最稳定 ★
-   ├─ ④ jsDelivr CDN 接口 ───────────── 最后兜底；有 CDN 缓存，新课件会延迟
+   ├─ ② GitHub Contents API ─────────── 平台文件夹；即时，个别环境连不上会降级
+   ├─ ③ files.json 清单（与网站同源）── 平台文件夹；推送后 1-2 分钟出现，最稳定 ★
+   ├─ ④ jsDelivr CDN 接口 ───────────── 平台文件夹；最后兜底，有 CDN 缓存会延迟
    ├─ ⑤ 旧缓存兜底 → 都不行才报错
-   └─ 课件数量旁标注数据源：GitHub / 文件清单 / 备用通道 / 缓存
+   └─ ⑥ 讲师仓库清单 cp-hw/files.json ─ 同源；读不到时静默跳过（只少显示讲师仓库课件）
+   └─ 两处合并（同名以平台文件夹为准）→ 统一排序展示，每行右侧标注来源：
+        本平台 / 讲师仓库；课件数量旁标注数据源：GitHub / 文件清单 / 备用通道 / 缓存
 ```
 
 - ②主通道失败后本会话会记住（`cp_api_down`），后续直接走③，避免每次等待连接超时；点「刷新」会重新尝试②
 - ③files.json 由 Actions 在**每次 push 到 main 后自动生成**：扫描所有顶层文件夹，把支持格式的课件名和大小写入清单，commit 回仓库（提交信息带 `[skip ci]` 防止循环触发）
-- 代码路径：`js/app.js` 的 `fetchTeacherFiles`（链）→ `fetchFromGitHub` / `fetchFromManifest` / `fetchFromJsdelivr`
+- ⑥每个讲师仓库有自己的同名工作流，每次推送生成**自己仓库的** files.json（根目录顶层文件，格式 `{generated_at, files:[{name,size}]}`）。网站直接读 `kylinle.github.io/cp-<账号>/files.json`——同源、无接口限流
+- 代码路径：`js/app.js` 的 `fetchTeacherFiles`（链）→ `fetchFromGitHub` / `fetchFromManifest` / `fetchFromJsdelivr`；讲师仓库部分见 `fetchFromTeacherRepo`（读取）与 `mergeRepoFiles`（合并去重）
 
 **sessionStorage 键一览**（均按浏览器会话隔离，关浏览器即清）：
 
 | 键 | 用途 |
 |---|---|
 | `cp_unlocked` | 本会话已通过密码（值为 `'1'`），刷新/切换讲解师不再询问 |
-| `cp_files_<teacher>` | 该讲解师列表缓存（`{ts, files}`），5 分钟内直接命中 |
+| `cp_files_<teacher>` | 该讲解师列表缓存（`{ts, files}`，含两处来源合并结果），5 分钟内直接命中 |
 | `cp_api_down` | GitHub 接口本会话不可用标记（值为 `'1'`），避免反复超时等待 |
 
 支持格式与行为：
@@ -108,7 +115,7 @@ space.html?t=hw
 | pdf | PDF | 直接下载 |
 | doc / docx | DOC / DOCX | 直接下载 |
 
-下载走本站相对路径（如 `hw/课件.pptx`）并带 `download` 属性，中文文件名正常保留。
+下载链接：平台文件夹课件走本站相对路径（如 `hw/课件.pptx`）；讲师仓库课件走绝对路径 `https://kylinle.github.io/cp-<账号>/课件.pptx`（与平台同源）。两者都带 `download` 属性，中文文件名正常保留。
 
 ## 访问控制
 
@@ -125,6 +132,8 @@ space.html?t=hw
 | `repo` / `branch` | 仓库 owner/name 与分支。当前 `KylinLe/cp` + main；换仓库改这里，换分支还要同步改工作流里的 `branches: [main]` 和 `git push origin HEAD:main` |
 | `passwordHash` | 密码 SHA-256 哈希（改法见上） |
 | `teachers` | 讲解师账号数组（`hw/lxn/lzy/swh/yyz`），与仓库中同名文件夹一一对应 |
+| `teacherRepos` | 讲解师个人课件仓库映射（账号 → 仓库名，如 `hw → cp-hw`）；讲解师没有个人仓库时删掉对应行 |
+| `pagesBase` | 讲解师仓库所在的 Pages 域名（当前 `https://kylinle.github.io`） |
 | `fileTypes` | 支持格式 + 图标 + 播放/下载行为 |
 | `apiCacheMs` | 列表缓存时长（默认 5 分钟） |
 | `unlockKey` | 会话解锁标记的键名（`cp_unlocked`） |
@@ -132,6 +141,8 @@ space.html?t=hw
 ## 部署与发布
 
 **发布链路**：本机 git 仓库 → `git push` → GitHub main → Actions 自动刷新 files.json → Pages 自动构建（1-2 分钟生效）。
+
+**讲师仓库发布链路**：`cp-<账号>` 仓库 → `git push` → 该仓库自己的 Actions 自动刷新自己的 files.json → 平台自动读到（1-2 分钟）。5 个讲师仓库均可用 `gh` 直接推送（方法与主仓库一致，`git remote -v` 指向各自的仓库地址）。
 
 - **本机 GitHub CLI**：`~/bin/gh`（官方 zip 手动安装，本机无 Homebrew），已登录 KylinLe 账号（OAuth 含 workflow 权限，2026-11-07 经设备码流程授权）。git 的凭据由它提供（`gh auth setup-git` 已配置）。
 - **本地 git 仓库**：classplatform 文件夹就是工作区（origin = KylinLe/cp，main 分支）。
@@ -156,8 +167,9 @@ space.html?t=hw
 
 ## 日常维护
 
-- **加课件**：放文件到讲解师文件夹 → `git add -A && git commit && git push` → 完成。Actions 自动刷新 files.json（约 1-2 分钟），网页点「刷新」即出现。
-- **加讲解师**：① 仓库根目录新建同名文件夹 ② `CONFIG.teachers` 加账号 ③ 推送。入口页自动多一个入口，清单自动包含（空文件夹在 git 中不存在，至少放一个课件）。
+- **加课件（平台文件夹）**：放文件到讲解师文件夹 → `git add -A && git commit && git push` → 完成。Actions 自动刷新 files.json（约 1-2 分钟），网页点「刷新」即出现。
+- **加课件（讲师个人仓库，适合大文件）**：放进 `cp-<账号>` 仓库根目录 → 推送该仓库 → 其工作流自动刷新自己的 files.json → 约 1-2 分钟后平台里该讲解师空间点「刷新」即可看到，行右侧标注「讲师仓库」。
+- **加讲解师**：① 仓库根目录新建同名文件夹 ② `CONFIG.teachers` 加账号 ③ 推送。入口页自动多一个入口，清单自动包含（空文件夹在 git 中不存在，至少放一个课件）。如需个人仓库：④ 建 `cp-<账号>` 仓库（拷贝任一讲师仓库的工作流 + 开 Pages）⑤ `CONFIG.teacherRepos` 加映射。
 - **换仓库**：改 `CONFIG.repo`，并在 GitHub 上把 Pages 指向新仓库。
 - **更新代码后**：浏览器强制刷新（`Cmd + Shift + R`）；GitHub Pages 生效等 1-2 分钟。
 - **不要动**：`.github/workflows/`、自动生成的 `files.json`、讲解师文件夹名（须与 `CONFIG.teachers` 一致）。
@@ -184,6 +196,7 @@ space.html?t=hw
 | 「无法连接课件文件接口」 | 网络问题；若列表仍正常显示（清单接管）则无需处理 |
 | git push 失败（75 秒超时） | 网络间歇抽风，直接重试 |
 | 更新代码后页面没变化 | 强制刷新浏览器（Cmd + Shift + R）；Pages 生效有 1-2 分钟延迟 |
+| 讲师仓库课件不出现 | ① 等 1-2 分钟（讲师仓库自己的清单生成需要时间）② 确认文件在该仓库根目录 ③ 确认该仓库 Pages 已开启、其工作流最近一次运行成功 |
 | 更详细的手册 | 见 `测试清单.md`（给主人的检查手册） |
 
 ## 设计系统
@@ -194,14 +207,16 @@ space.html?t=hw
 
 - 密码门是「挡路人」级别，不是安全机制；仓库公开时课件在 GitHub 上本身可见
 - 讲解师文件夹只支持顶层文件，不支持子文件夹；不支持的格式自动忽略
+- 讲师个人仓库同样只扫描根目录顶层文件
 - 空文件夹在 git 中不存在：新讲解师文件夹至少放一个课件后才会进入清单
 - 清单通道依赖 Actions：工作流缺失时无自动更新，退化为主/备用通道（新课件可能出现延迟）
+- 讲师仓库清单读不到时，其课件暂不显示（平台文件夹课件不受影响）；讲师仓库与平台文件夹同名课件以平台文件夹为准
 
 ## 更新日志
 
 | 日期 | 变更 |
 |---|---|
-| 2026-11-07 | 迁移至 `KylinLe/cp` 并上线（kylinle.github.io/cp）；安装 gh CLI、本地初始化 git 仓库，改为直接 git push 发布；主页新增「随机抽人」「摄影社官网」按钮、密码页新增官网入口；sjcq.html 改名 sjcr.html；修复全部课件旧英文名（28 处）；删除 test.html、讲解师文件夹内 index.html 副本、17MB PPTX；「教室」统一改「讲解师」（Lecturer/Lecturers）；文档详细化 |
+| 2026-11-07 | 迁移至 `KylinLe/cp` 并上线（kylinle.github.io/cp）；安装 gh CLI、本地初始化 git 仓库，改为直接 git push 发布；主页新增「随机抽人」「摄影社官网」按钮、密码页新增官网入口；sjcq.html 改名 sjcr.html；修复全部课件旧英文名（28 处）；删除 test.html、讲解师文件夹内 index.html 副本、17MB PPTX；「教室」统一改「讲解师」（Lecturer/Lecturers）；文档详细化；**建立 5 个讲解师个人课件仓库（cp-hw 等，解决单仓库大小限制）：双源扫描 + 每行右侧标注「本平台 / 讲师仓库」** |
 | 2026-10-31 | README 重写 + 新增 CLAUDE.md（面向维护者的文档体系）；社团英文名更新为 Photography Club of Putuo High School |
 | 2026-10-29 | 旧仓库 classroom 的自动清单工作流上传并首次跑通（files.json 自动生成） |
 | 2026-10-26 | 初版上线旧地址：密码门 + 讲解师选择 + 三通道课件列表 + aaa 风格设计系统 |

@@ -21,6 +21,17 @@ var CONFIG = {
   /* 教师账号（与仓库里同名的文件夹一一对应） */
   teachers: ['hw', 'lxn', 'lzy', 'swh', 'yyz'],
 
+  /* 讲解师个人课件仓库（2026-11-07 起，解决单仓库大小限制）：
+     每个讲解师可有一个自己的 GitHub 仓库放课件，与本仓库的
+     同名文件夹同时扫描，列表里标注「本平台 / 讲师仓库」。
+     值 = kylinle.github.io/<仓库名>；讲解师没有个人仓库时删掉对应行即可。
+     对应仓库需开启 Pages（main 根目录）并带上自己的清单工作流。 */
+  teacherRepos: {
+    hw: 'cp-hw', lxn: 'cp-lxn', lzy: 'cp-lzy', swh: 'cp-swh', yyz: 'cp-yyz'
+  },
+  /* 讲解师仓库所在的 Pages 域名（换账号时改这里） */
+  pagesBase: 'https://kylinle.github.io',
+
   /* 支持的文件格式：badge 为列表图标，play 表示新标签页播放，否则下载 */
   fileTypes: {
     html: { badge: 'HTML', action: 'play',     label: '播放' },
@@ -256,6 +267,44 @@ function fetchFromManifest(teacher) {
     });
 }
 
+/* 讲解师个人仓库通道：读取 <pagesBase>/<仓库>/files.json（与本站同源）。
+   每个讲解师仓库有自己的 Actions 工作流生成这份清单；
+   读不到（仓库没有清单 / 未开 Pages / 网络异常）时静默跳过，
+   只影响「讲师仓库」课件，平台文件夹列表不受影响。 */
+function fetchFromTeacherRepo(teacher) {
+  var repoName = CONFIG.teacherRepos[teacher];
+  if (!repoName) return Promise.resolve([]);
+  var url = CONFIG.pagesBase + '/' + repoName + '/files.json?t=' + Date.now();
+  return fetch(url, { cache: 'no-store' })
+    .then(function (res) {
+      if (!res.ok) return []; /* 404（暂无清单）等：静默跳过 */
+      return res.json();
+    })
+    .then(function (data) {
+      var list = (data && data.files) || [];
+      var files = [];
+      list.forEach(function (it) {
+        var f = makeFile(decodeName(it.name), it.size);
+        if (!f) return;
+        f.src = 'repo'; /* 来源：讲师个人仓库 */
+        f.url = CONFIG.pagesBase + '/' + repoName + '/' + encodeURIComponent(f.name);
+        files.push(f);
+      });
+      return files;
+    })
+    .catch(function () { return []; });
+}
+
+/* 合并平台文件夹与讲师仓库的课件：去重（同名以平台文件夹为准）+ 按名称排序 */
+function mergeRepoFiles(localFiles, repoFiles) {
+  if (!repoFiles || !repoFiles.length) return localFiles;
+  var seen = {};
+  localFiles.forEach(function (f) { seen[f.name] = true; });
+  var extra = repoFiles.filter(function (f) { return !seen[f.name]; });
+  if (!extra.length) return localFiles;
+  return sortFiles(localFiles.concat(extra));
+}
+
 /* 主通道在本次会话内失败过（多为网络连不上），记录状态，
    后续读取直接走清单通道，避免每次都等待连接超时。
    点「刷新」（force）会重新尝试主通道。 */
@@ -280,8 +329,10 @@ function writeFilesCache(teacher, files) {
 }
 
 /* 读取某教师文件夹里的课件，返回 Promise<Array>
-   每个元素：{ name 展示名, ext, size, badge, action, label }
-   读取顺序：会话缓存 -> GitHub 接口 -> files.json 清单 -> jsDelivr 备用接口 -> 过期缓存兜底 */
+   每个元素：{ name 展示名, ext, size, badge, action, label, src?, url? }
+   （src='repo' + url 表示来自讲师个人仓库，其余来自本平台文件夹）
+   读取顺序：会话缓存 -> GitHub 接口 -> files.json 清单 -> jsDelivr 备用接口 -> 过期缓存兜底；
+   平台文件夹列表拿到后，再合并讲师个人仓库的课件（读不到不影响前者）。 */
 function fetchTeacherFiles(teacher, force) {
   var cached = readFilesCache(teacher);
   if (!force && cached && (Date.now() - cached.ts) < CONFIG.apiCacheMs) {
@@ -313,8 +364,12 @@ function fetchTeacherFiles(teacher, force) {
 
   return chain
     .then(function (files) {
-      writeFilesCache(teacher, files);
-      return files;
+      /* 合并讲师个人仓库的课件（该读取永远不报错：失败=没有讲师仓库文件） */
+      return fetchFromTeacherRepo(teacher).then(function (repoFiles) {
+        var merged = mergeRepoFiles(files, repoFiles);
+        writeFilesCache(teacher, merged);
+        return merged;
+      });
     })
     .catch(function (err) {
       if (cached) { lastSource = 'cache-stale'; return cached.files; } /* 旧缓存兜底 */
@@ -365,22 +420,26 @@ function teacherRowHtml(teacher, index) {
          '</a>';
 }
 
-/* 渲染课件列表行 */
+/* 渲染课件列表行；右侧标注文件来源：本平台 / 讲师仓库 */
 function fileRowHtml(teacher, file) {
-  var href = fileHref(teacher, file.name);
+  var href = file.url || fileHref(teacher, file.name); /* 讲师仓库文件用绝对地址 */
   var attrs = 'href="' + href + '"';
   if (file.action === 'play') {
     attrs += ' target="_blank" rel="noopener"';           /* html：新标签页播放 */
   } else {
     attrs += ' download="' + file.name.replace(/"/g, '') + '"'; /* 其余：直接下载 */
   }
+  var srcTag = file.src === 'repo' ? '讲师仓库' : '本平台';
   return '<a class="file-row" ' + attrs + '>' +
            '<div class="badge">' + file.badge + '</div>' +
            '<div class="f-info">' +
              '<div class="f-name">' + file.name + '</div>' +
              '<div class="f-meta">' + fmtSize(file.size) + '</div>' +
            '</div>' +
-           '<div class="f-act">' + file.label + (file.action === 'play' ? ' &nearr;' : ' &darr;') + '</div>' +
+           '<div class="f-side">' +
+             '<div class="f-src">' + srcTag + '</div>' +
+             '<div class="f-act">' + file.label + (file.action === 'play' ? ' &nearr;' : ' &darr;') + '</div>' +
+           '</div>' +
          '</a>';
 }
 
